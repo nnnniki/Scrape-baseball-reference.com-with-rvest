@@ -18,6 +18,16 @@ current_name=teamname[i]
 new[[i]] <- data.frame(as.data.frame(team[[i]]),current_name) }
 baseball<-rbindlist(new) 
 
+# Some light text clean up
+library(stringr)
+all.equal(charToRaw(baseball$Tm[1]), charToRaw("Arizona Diamondbacks"))
+char_cols <- which(lapply(baseball, typeof) == "character")
+for(i in char_cols) {
+    baseball[[i]] <- str_conv(baseball[[i]], "UTF-8")
+    baseball[[i]] <- str_replace_all(baseball[[i]],"\\s"," ")
+}
+all.equal(charToRaw(baseball$Tm[1]), charToRaw("Arizona Diamondbacks"))
+
 # dplyr to summarize the baseball data
 library(dplyr) 
 newbaseball<-
