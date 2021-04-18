@@ -1,0 +1,43 @@
+# Scrape baseball-reference.com with rvest
+library(rvest) 
+library(xml2) 
+library(stringr) 
+library(data.table)
+teampage <- read_html("http://www.baseball-reference.com/teams/") 
+teamname <- teampage %>%
+html_nodes("#teams_active .left a") %>% html_text()
+s <- html_session("http://www.baseball-reference.com/teams/") 
+team <- list()
+for(name in teamname[1:30]){
+eachteampage <- s %>% follow_link(name) %>% read_html()
+team[[name]] <- eachteampage %>% html_nodes("#franchise_years") %>% html_table()
+}
+new <-list()
+for(i in 1:length(team)){
+current_name=teamname[i]
+new[[i]] <- data.frame(as.data.frame(team[[i]]),current_name) }
+baseball<-rbindlist(new) 
+
+# dplyr to summarize the baseball data
+library(dplyr) 
+newbaseball<-
+filter(baseball, Year %in% 2001:2020) %>%
+group_by(current_name) %>%
+summarise(TW = sum(W), TL = sum(L), TR = sum(R), TRA = sum(RA),TWP=TW/(TW+TL)) %>% arrange(desc(TWP))
+print.data.frame(newbaseball)
+
+#Regular expressions to extract values in the Managers Column
+library(dplyr) 
+library(stringr) 
+library(data.table)
+managers_list <- str_match_all(baseball$Managers, ("([A-Z].[a-zA-Z][a-zA-Z ][a-zA-Z ]+) \\(([0-9]+)-([0-9]+)\\)"))
+df <-data.frame(do.call(rbind.data.frame, managers_list)) 
+df <- subset(df, select = c(V2,V3,V4))
+colnames(df) <- c("manager", "wins", "losses")
+df$wins <- as.numeric(df$wins) 
+df$losses <- as.numeric(df$losses)
+manager_summary <- df %>%
+group_by(manager) %>%
+summarise(games = sum(wins) + sum(losses), wins = sum(wins), loss = sum(losses),
+win_percentage = sum(wins)/(sum(wins)+sum(losses))) %>% arrange(desc(games))
+manager_summary[1:10,]
